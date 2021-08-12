@@ -4,7 +4,11 @@ string MapAxis;
 vector Maxima = ZERO_VECTOR;    
 integer MenuListen;              
 vector Minima;                    
-vector Scale;                    
+vector Scale;
+
+integer channel_listener = 1232; //this channel is for listener (not touch) events
+integer handle_Listener = 0;
+integer chatevent = 0;
 
 CloseListen(){
   
@@ -97,8 +101,7 @@ Resize(){
         }
     }
 
-
-    Menu();
+    if(chatevent == 0) Menu();
 }
 
 string RoundVec(vector In){
@@ -132,52 +135,74 @@ default{
     }
 
     listen(integer ChannelIn, string FromName, key FromID, string Message){
-      
-        CloseListen();
-        if((float) Message){
-          
-            if(Axes.x){Scale.x += (float) Message;}
-            if(Axes.y){Scale.y += (float) Message;}
-            if(Axes.z){Scale.z += (float) Message;}
-            Resize();
-        }else{
-      
-            if("Cancel" == Message){
-            
-                Delete = FALSE;
-                Menu();
-            }else if("Confirm" == Message){
+
+        llOwnerSay("ChannelIn: "+(string)ChannelIn);
+        if(ChannelIn == (integer)channel_listener) 
+        {
+            chatevent = 1;
+            //here we handle the chat resizer
+            llOwnerSay("handle chat event, resize to: " + Message+ "percent.");
+            //calculate resize prozentual
+            llOwnerSay("new scale:  "+(string)((float)Message/100.0) );
+            if(Axes.x){Scale.x += (float)((float)Message/100.0);}
+            if(Axes.y){Scale.y += (float)((float)Message/100.0);}
+            if(Axes.z){Scale.z += (float)((float)Message/100.0);}
+        
+            Resize();            
+            llSay(0,"Done reiszeing...");
+        }
+        else
+        {
+            chatevent = 0;
+            //default menu resizer handling
+            llOwnerSay("handle menu command with channel:"+(string)ChannelIn+" message: "+Message);
+            CloseListen();
+            if((float) Message){
               
-                integer Counter = llGetNumberOfPrims();
-                if(1 == Counter){
-                    llSetLinkPrimitiveParamsFast(0, [PRIM_TEXT, "", ZERO_VECTOR, 0.0]);
-                }else{
-                    while(Counter){
-                        llSetLinkPrimitiveParamsFast(Counter--, [PRIM_TEXT, "", ZERO_VECTOR, 0.0]);
-                    }
-                }
-                llOwnerSay("Script deleted");
-                llRemoveInventory(llGetScriptName());
-            }else if("Delete" == Message){
-              
-                Delete = TRUE;
-                Menu();
-            }else if("Exit" == Message){
-          
-            }else if("Restore" == Message){
-            
-                if(Axes.x){Scale.x = 1.0;}
-                if(Axes.y){Scale.y = 1.0;}
-                if(Axes.z){Scale.z = 1.0;}
+                if(Axes.x){Scale.x += (float) Message;}
+                if(Axes.y){Scale.y += (float) Message;}
+                if(Axes.z){Scale.z += (float) Message;}
                 Resize();
             }else{
-                Message = llGetSubString(Message, 0, 0);
-                if("X" == Message){Axes.x = !(integer) Axes.x;}
-                else if("Y" == Message){Axes.y = !(integer) Axes.y;}
-                else if("Z" == Message){Axes.z = !(integer) Axes.z;}
-                Menu();
+          
+                if("Cancel" == Message){
+                
+                    Delete = FALSE;
+                    Menu();
+                }else if("Confirm" == Message){
+                  
+                    integer Counter = llGetNumberOfPrims();
+                    if(1 == Counter){
+                        llSetLinkPrimitiveParamsFast(0, [PRIM_TEXT, "", ZERO_VECTOR, 0.0]);
+                    }else{
+                        while(Counter){
+                            llSetLinkPrimitiveParamsFast(Counter--, [PRIM_TEXT, "", ZERO_VECTOR, 0.0]);
+                        }
+                    }
+                    llOwnerSay("Script deleted");
+                    llRemoveInventory(llGetScriptName());
+                }else if("Delete" == Message){
+                  
+                    Delete = TRUE;
+                    Menu();
+                }else if("Exit" == Message){
+              
+                }else if("Restore" == Message){
+                
+                    if(Axes.x){Scale.x = 1.0;}
+                    if(Axes.y){Scale.y = 1.0;}
+                    if(Axes.z){Scale.z = 1.0;}
+                    Resize();
+                }else{
+                    Message = llGetSubString(Message, 0, 0);
+                    if("X" == Message){Axes.x = !(integer) Axes.x;}
+                    else if("Y" == Message){Axes.y = !(integer) Axes.y;}
+                    else if("Z" == Message){Axes.z = !(integer) Axes.z;}
+                    Menu();
+                }
             }
         }
+      
     }
 
     state_entry(){
@@ -239,7 +264,9 @@ default{
         Minima.y = MinDim / Minima.y;
         Minima.z = MinDim / Minima.z;
         Scale = <1.0, 1.0, 1.0>;
-        llOwnerSay("Ready - touch for menu");
+        
+        handle_Listener = llListen(channel_listener, "", llGetOwner(), "");
+        llOwnerSay("Ready - touch for menu or ust the chat with channel: "+ (string)channel_listener +" to resize");
     }
 
     timer(){
